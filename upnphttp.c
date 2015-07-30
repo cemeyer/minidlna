@@ -170,6 +170,23 @@ SetSendBuf_upnphttp(struct upnphttp * h)
 	} while( sndbuf_max == 0 );
 }
 
+static void
+PrefetchSendFile_upnphttp(int fd, off_t start, off_t endoff)
+{
+#if HAVE_POSIX_FADVISE
+	int rc;
+
+	rc = posix_fadvise(fd, start, endoff - start + 1, POSIX_FADV_SEQUENTIAL);
+	if( rc )
+		DPRINTF(E_WARN, L_HTTP, "XXX posix_fadvise() err: %d (?%d)\n", rc, errno);
+		/* Ignore, this is advisory. */
+#else
+	(void)fd;
+	(void)start;
+	(void)endoff;
+#endif
+}
+
 /* parse HttpHeaders of the REQUEST */
 static void
 ParseHttpHeaders(struct upnphttp * h)
@@ -1296,6 +1313,9 @@ send_file(struct upnphttp * h, int sendfd, off_t offset, off_t end_offset)
 	char *buf = NULL;
 #if HAVE_SENDFILE
 	int try_sendfile = 1;
+#if HAVE_READAHEAD
+	int rc;
+#endif
 #endif
 
 	while( offset <= end_offset )
@@ -1304,6 +1324,14 @@ send_file(struct upnphttp * h, int sendfd, off_t offset, off_t end_offset)
 		if( try_sendfile )
 		{
 			send_size = ( ((end_offset - offset) < MAX_BUFFER_SIZE) ? (end_offset - offset + 1) : MAX_BUFFER_SIZE);
+
+#if HAVE_READAHEAD
+			rc = readahead(sendfd, offset, send_size);
+			if( rc == -1 )
+				DPRINTF(E_WARN, L_HTTP, "XXX readahead() err: %d (%s)\n", errno, strerror(errno));
+				/* Ignore, this is advisory. */
+#endif
+
 			ret = sys_sendfile(h->ev.fd, sendfd, &offset, send_size);
 			if( ret == -1 )
 			{
@@ -2062,6 +2090,8 @@ SendResp_dlnafile(struct upnphttp *h, char *object)
 		total = size;
 		strcatf(&str, "Content-Length: %jd\r\n", (intmax_t)total);
 	}
+
+	PrefetchSendFile_upnphttp(sendfh, offset, h->req_RangeEnd);
 
 	switch( *last_file.mime )
 	{

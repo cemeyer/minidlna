@@ -69,6 +69,8 @@ AC_FUNC_FORK
 AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
 AC_CHECK_FUNCS([gethostname getifaddrs gettimeofday inet_ntoa memmove memset mkdir realpath select sendfile setlocale socket strcasecmp strchr strdup strerror strncasecmp strpbrk strrchr strstr strtol strtoul])
 AC_CHECK_DECLS([SEEK_HOLE])
+AC_CHECK_FUNCS(posix_fadvise, AC_DEFINE(HAVE_POSIX_FADVISE,1,[Whether libc has posix_fadvise]))
+AC_CHECK_FUNCS(readahead, AC_DEFINE(HAVE_READAHEAD,1,[Whether libc has readahead]))
 
 #
 # Check for struct ip_mreqn
