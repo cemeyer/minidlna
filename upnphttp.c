@@ -1862,6 +1862,7 @@ SendResp_dlnafile(struct upnphttp *h, char *object)
 #if USE_FORK
 	pid_t newpid = 0;
 #endif
+	struct stat sb;
 
 	id = strtoll(object, NULL, 10);
 	if( cflags & FLAG_MS_PFS )
@@ -1979,8 +1980,15 @@ SendResp_dlnafile(struct upnphttp *h, char *object)
 			Send404(h);
 		goto error;
 	}
-	size = lseek(sendfh, 0, SEEK_END);
-	lseek(sendfh, 0, SEEK_SET);
+
+	ret = fstat(sendfh, &sb);
+	if( ret < 0 ) {
+		Send500(h);
+		close(sendfh);
+		goto error;
+	}
+
+	size = sb.st_size;
 
 	INIT_STR(str, header);
 
