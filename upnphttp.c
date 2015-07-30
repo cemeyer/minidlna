@@ -145,6 +145,31 @@ Delete_upnphttp(struct upnphttp * h)
 	}
 }
 
+static int sndbuf_max;
+
+static void
+SetSendBuf_upnphttp(struct upnphttp * h)
+{
+	int rc, sz;
+
+	if( sndbuf_max == 0 )
+		sz = 2048;
+	else
+		sz = sndbuf_max;
+
+	do {
+		rc = setsockopt(h->socket, SOL_SOCKET, SO_SNDBUF, &sz, sizeof(sz));
+		if( rc < 0 || sz >= INT_MAX / 2 ) {
+			if( sndbuf_max == 0 ) {
+				sndbuf_max = sz / 2;
+			} else {
+				DPRINTF(E_WARN, L_HTTP, "XXX refused ok sndbuf val?: %d\n", sndbuf_max);
+			}
+		}
+		sz *= 2;
+	} while( sndbuf_max == 0 );
+}
+
 /* parse HttpHeaders of the REQUEST */
 static void
 ParseHttpHeaders(struct upnphttp * h)
@@ -2060,6 +2085,8 @@ SendResp_dlnafile(struct upnphttp *h, char *object)
 	strcatf(&str, "Accept-Ranges: bytes\r\n"
 	              "contentFeatures.dlna.org: %sDLNA.ORG_OP=%02X;DLNA.ORG_CI=%X;DLNA.ORG_FLAGS=%08X%024X\r\n\r\n",
 	              last_file.dlna, 1, 0, dlna_flags, 0);
+
+	SetSendBuf_upnphttp(h);
 
 	//DEBUG DPRINTF(E_DEBUG, L_HTTP, "RESPONSE: %s\n", str.data);
 	if( send_data(h, str.data, str.off, MSG_MORE) == 0 )
