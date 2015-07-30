@@ -83,8 +83,8 @@
 #include "process.h"
 #include "sendfile.h"
 
-#define MAX_BUFFER_SIZE 2147483647
-#define MIN_BUFFER_SIZE 65536
+#define MAX_BUFFER_SIZE (1 * 1024 * 1024)
+#define MIN_BUFFER_SIZE (64 * 1024)
 
 #define INIT_STR(s, d) { s.data = d; s.size = sizeof(d); s.off = 0; }
 
